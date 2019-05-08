@@ -4,9 +4,10 @@
 
 RTC_DATA_ATTR int doorbellPressedCounter = 0;
 
-#define uS_TO_M_FACTOR 60000000  /* Conversion factor for micro seconds to seconds */
+unsigned long heartbeatTimestamp = 0;
+unsigned long heartbeatInterval = 20; //min
 
-const uint32_t TIME_TO_SLEEP = 60;  /* Time ESP32 will go to sleep (in minuts) */ 
+int MS_M_FACTOR = 60000;
 
 const String sensorId = "6e039d00-6825-11e9-b740-d58f0755db70";
 
@@ -16,8 +17,7 @@ void setup() {
   
   setupCloudIoT();
   
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_M_FACTOR); //wake up every hour
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_34,1); //1 = High, 0 = Low
+  pinMode(GPIO_NUM_34, INPUT);
 
   Serial.println("MAC: ");
   Serial.println(WiFi.macAddress());
@@ -38,9 +38,9 @@ void loop() {
   serializeJson(notificationPayloadDoc, notificationPayload);
 
   float battery_level = (float(analogRead(GPIO_NUM_35)) / 4095)*2*3.3*1.1;
-  Serial.print("Battery Voltage = "); Serial.print(battery_level, 2); Serial.println(" V");
-
+  
   mqttClient->loop();
+  
   delay(10);  // <- fixes some issues with WiFi stability
 
   if (!mqttClient->connected())
@@ -48,16 +48,16 @@ void loop() {
       connect();
   }
 
-  esp_sleep_wakeup_cause_t wakeup_reason;
-  wakeup_reason = esp_sleep_get_wakeup_cause();
-
-  if(wakeup_reason == ESP_SLEEP_WAKEUP_EXT0)
+  if(digitalRead(GPIO_NUM_34) == HIGH)
   {
       Serial.println("Sending notification");
       publishTelemetry("/notification", notificationPayload);
+  
       ++doorbellPressedCounter;
-  }
 
+      delay(1000);
+  }
+  
   JsonObject heartbeatPayloadObject = heartbeatPayloadDoc.to<JsonObject>();
   heartbeatPayloadObject["id"] = sensorId;
   heartbeatPayloadObject["battery_level"] = battery_level;
@@ -67,22 +67,13 @@ void loop() {
   String heartbeatPayload;
   serializeJson(heartbeatPayloadDoc, heartbeatPayload);
 
-  //if(wakeup_reason == ESP_SLEEP_WAKEUP_TIMER)
-  //{
-      publishTelemetry("/heartbeat", heartbeatPayload);    
-  //}
-
-  switch(wakeup_reason)
+  if( millis() - heartbeatTimestamp > heartbeatInterval * MS_M_FACTOR )
   {
-    case ESP_SLEEP_WAKEUP_EXT0 : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-    case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-    case ESP_SLEEP_WAKEUP_TIMER : Serial.println("Wakeup caused by timer"); break;
-    case ESP_SLEEP_WAKEUP_TOUCHPAD : Serial.println("Wakeup caused by touchpad"); break;
-    case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup caused by ULP program"); break;
-    default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
+      heartbeatTimestamp += heartbeatInterval;
+    
+      Serial.println("Sending heartbeat");
+      publishTelemetry("/heartbeat", heartbeatPayload);    
   }
-  
-  //Go to sleep now
-  Serial.println("Going to sleep now");
-  esp_deep_sleep_start();
+
+  delay(100);
 }
