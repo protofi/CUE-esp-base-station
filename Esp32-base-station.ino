@@ -2,11 +2,13 @@
 #include "esp32-mqtt.h"
 #include <ArduinoJson.h>
 
+RTC_DATA_ATTR int doorbellPressedCounter = 0;
+
 #define uS_TO_M_FACTOR 60000000  /* Conversion factor for micro seconds to seconds */
 
 const uint32_t TIME_TO_SLEEP = 60;  /* Time ESP32 will go to sleep (in minuts) */ 
 
-const String sensorId = "74bf6730-6692-11e9-9aad-5f278de1925b";
+const String sensorId = "6e039d00-6825-11e9-b740-d58f0755db70";
 
 void setup() {
   // put your setup code here, to run once:
@@ -15,7 +17,10 @@ void setup() {
   setupCloudIoT();
   
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_M_FACTOR); //wake up every hour
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_34,1); //1 = High, 0 = Low  
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_34,1); //1 = High, 0 = Low
+
+  Serial.println("MAC: ");
+  Serial.println(WiFi.macAddress());
 }
 
 void loop() {
@@ -33,21 +38,14 @@ void loop() {
   serializeJson(notificationPayloadDoc, notificationPayload);
 
   float battery_level = (float(analogRead(GPIO_NUM_35)) / 4095)*2*3.3*1.1;
-  Serial.print("Battery Voltage = "); Serial.print(battery_level, 2); Serial.println(" V"); 
-
-  JsonObject heartbeatPayloadObject = heartbeatPayloadDoc.to<JsonObject>();
-  heartbeatPayloadObject["id"] = sensorId;
-  heartbeatPayloadObject["battery_level"] = battery_level;
-  heartbeatPayloadObject["signal_strength"] = "123";
-  
-  String heartbeatPayload;
-  serializeJson(heartbeatPayloadDoc, heartbeatPayload);
+  Serial.print("Battery Voltage = "); Serial.print(battery_level, 2); Serial.println(" V");
 
   mqttClient->loop();
   delay(10);  // <- fixes some issues with WiFi stability
 
-  if (!mqttClient->connected()) {
-    connect();
+  if (!mqttClient->connected())
+  {
+      connect();
   }
 
   esp_sleep_wakeup_cause_t wakeup_reason;
@@ -57,7 +55,17 @@ void loop() {
   {
       Serial.println("Sending notification");
       publishTelemetry("/notification", notificationPayload);
+      ++doorbellPressedCounter;
   }
+
+  JsonObject heartbeatPayloadObject = heartbeatPayloadDoc.to<JsonObject>();
+  heartbeatPayloadObject["id"] = sensorId;
+  heartbeatPayloadObject["battery_level"] = battery_level;
+  heartbeatPayloadObject["signal_strength"] = "123";
+  heartbeatPayloadObject["notification_counter"] = String(doorbellPressedCounter);
+  
+  String heartbeatPayload;
+  serializeJson(heartbeatPayloadDoc, heartbeatPayload);
 
   //if(wakeup_reason == ESP_SLEEP_WAKEUP_TIMER)
   //{
@@ -73,8 +81,6 @@ void loop() {
     case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup caused by ULP program"); break;
     default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
   }
-
-  delay(2000);
   
   //Go to sleep now
   Serial.println("Going to sleep now");
