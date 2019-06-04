@@ -5,12 +5,14 @@
 RTC_DATA_ATTR int doorbellPressedCounter = 0;
 
 unsigned long heartbeatTimestamp = 0;
-unsigned long heartbeatInterval = 30; //min
+unsigned long heartbeatInterval = 20; //min
 
 int MS_M_FACTOR = 60000;
 
-const String sensorId = "6e039d00-6825-11e9-b740-d58f0755db70";
-//const String sensorId = "74bf6730-6692-11e9-9aad-5f278de1925b";
+bool retryNotification = false;
+
+//const String sensorId = "6e039d00-6825-11e9-b740-d58f0755db70";
+const String sensorId = "74bf6730-6692-11e9-9aad-5f278de1925b";
 
 void setup() {
   // put your setup code here, to run once:
@@ -49,14 +51,17 @@ void loop() {
       connect();
   }
 
-  if(digitalRead(GPIO_NUM_34) == HIGH)
+  if(digitalRead(GPIO_NUM_34) == HIGH || retryNotification)
   {
-      Serial.println("Sending notification");
-      publishTelemetry("/notification", notificationPayload);
-  
-      ++doorbellPressedCounter;
+    retryNotification = false;
+    
+    Serial.println("Sending notification");
+    publishTelemetry("/notification", notificationPayload);
 
-      delay(1000);
+    delay(1000);
+    retryNotification = (lastReturnCode() != 0);
+    
+    ++doorbellPressedCounter;
   }
 
   long rssi = WiFi.RSSI();

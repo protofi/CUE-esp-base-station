@@ -15,8 +15,8 @@
 // This file contains your configuration used to connect to Cloud IoT Core
 
 // Wifi newtork details.
-const char *ssid =      "HatchIT_2.4G";//"CueAccessPoint"; //"AarhusKommune-PSK";
-const char *password =  "mrfunkfunk";  //"kummefryser";    //"Aarhus65";
+const char *ssid =     /*"HatchIT_2.4G";//*/"CueAccessPoint"; //"AarhusKommune-PSK";
+const char *password =  /*"mrfunkfunk";  //*/"kummefryser";    //"Aarhus65";
 
 // Cloud iot details.
 const char *project_id = "user-test-cue-iot-cloud"; //"project-id";
