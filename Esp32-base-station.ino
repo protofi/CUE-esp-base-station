@@ -33,10 +33,6 @@ void loop() {
   StaticJsonDocument<CAPACITY> notificationPayloadDoc;
   StaticJsonDocument<CAPACITY> heartbeatPayloadDoc;
 
-  // create an object
-  JsonObject notificationPayloadObject = notificationPayloadDoc.to<JsonObject>();
-  notificationPayloadObject["id"] = sensorId;
-
   String notificationPayload;
   serializeJson(notificationPayloadDoc, notificationPayload);
 
@@ -56,16 +52,16 @@ void loop() {
     retryNotification = false;
     
     Serial.println("Sending notification");
-    publishTelemetry("/notification", notificationPayload);
+    publishTelemetry("/doorbell", notificationPayload);
 
-    delay(1000);
+    delay(700);
     retryNotification = (lastReturnCode() != 0);
     
     ++doorbellPressedCounter;
   }
 
   long rssi = WiFi.RSSI();
-  
+  /*
   JsonObject heartbeatPayloadObject = heartbeatPayloadDoc.to<JsonObject>();
   heartbeatPayloadObject["id"] = sensorId;
   heartbeatPayloadObject["battery_level"] = battery_level;
@@ -75,7 +71,6 @@ void loop() {
   String heartbeatPayload;
   serializeJson(heartbeatPayloadDoc, heartbeatPayload);
 
-
   if( millis() - heartbeatTimestamp > heartbeatInterval * MS_M_FACTOR )
   {
       heartbeatTimestamp += heartbeatInterval * MS_M_FACTOR;
@@ -83,6 +78,5 @@ void loop() {
       Serial.println("Sending heartbeat");
       publishTelemetry("/heartbeat", heartbeatPayload);    
   }
-
-  delay(100);
+  */
 }
