@@ -26,11 +26,16 @@ void loop() {
   // allocate the memory for the document
   const size_t CAPACITY = JSON_OBJECT_SIZE(53);
   StaticJsonDocument<CAPACITY> notificationPayloadDoc;
+  
+  float battery_level = (float(analogRead(GPIO_NUM_35)) / 4095) * 2 * 3.3 * 1.1;
 
+  // create an object
+  JsonObject notificationPayloadObject = notificationPayloadDoc.to<JsonObject>();
+  notificationPayloadObject["battery_level"] = battery_level;
+  
   String notificationPayload;
   serializeJson(notificationPayloadDoc, notificationPayload);
 
-  //float battery_level = (float(analogRead(GPIO_NUM_35)) / 4095)*2*3.3*1.1;
   
   mqttClient->loop();
   
@@ -48,8 +53,7 @@ void loop() {
 
   if(wakeup_reason == ESP_SLEEP_WAKEUP_EXT0)
   {
-      Serial.println("Sending notification");
-      publishTelemetry("/notification", notificationPayload);
+      publishTelemetry("/doorbell", notificationPayload);
       
       delay(1000);
       retryNotification = (lastReturnCode() != 0);
@@ -69,8 +73,12 @@ void loop() {
 
   if(!retryNotification)
   {
+      Serial.println("Sending notification");
+  
       //Go to sleep now
       Serial.println("Going to sleep now");
       esp_deep_sleep_start();    
   }
+
+  Serial.println("Auth error: Resending notification");
 }
