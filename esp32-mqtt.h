@@ -101,14 +101,13 @@ void publishTelemetry(String subfolder, const char* data, int length) {
   mqtt->publishTelemetry(subfolder, data, length);
 }
 
-int lastReturnCode()
-{
-  return mqtt->getReturnCode();
-}
-
 void connect() {
   connectWifi();
   mqtt->mqttConnect();
+}
+
+int lastReturnCode() {
+  return mqtt->getReturnCode();
 }
 
 void setupCloudIoT() {
